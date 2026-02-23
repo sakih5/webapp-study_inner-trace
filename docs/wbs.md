@@ -108,6 +108,31 @@
 
 ---
 
+## フェーズ5: 設計変更・UI改善
+
+- [x] D.1 ExpandableCell ポップアップ途中クローズ修正
+  - 仮行の保存を debounce ではなく blur（onCommit）時のみ行うよう変更
+- [x] D.2 ExpandableCell に保存ボタン追加
+- [x] D.3 感情フィールドを自由テキスト入力（ExpandableCell）に変更
+  - 感情オプション管理を設定画面・DB・バックエンドから削除
+- [x] D.4 テーブルのテキスト折り返し対応（行高自動調節）
+- [x] D.5 Action・Emotion 列幅を均等化
+
+---
+
+## フェーズ6: デプロイ
+
+- [x] E.1 GitHub push（全実装）
+- [x] E.2 GCP プロジェクト作成（inner-trace）・API 有効化
+- [x] E.3 バックエンドを Cloud Run にデプロイ
+  - イメージ: asia-northeast1-docker.pkg.dev/inner-trace/inner-trace-repo/backend
+  - URL: https://inner-trace-backend-137441136050.asia-northeast1.run.app
+- [x] E.4 フロントエンドを Vercel にデプロイ
+  - URL: https://inner-trace.vercel.app
+- [x] E.5 CORS・env var の設定
+
+---
+
 ## 実装順序
 
 ```text
