@@ -163,17 +163,6 @@ export const MOCK_RETRO_ENTRIES: RetroEntry[] = [
 ];
 
 export const MOCK_USER_OPTIONS: UserOption[] = [
-  // emotion
-  { id: 'opt-e-01', option_type: 'emotion', label: '集中',      sort_order: 0 },
-  { id: 'opt-e-02', option_type: 'emotion', label: '普通',      sort_order: 1 },
-  { id: 'opt-e-03', option_type: 'emotion', label: '疲れ',      sort_order: 2 },
-  { id: 'opt-e-04', option_type: 'emotion', label: '不安',      sort_order: 3 },
-  { id: 'opt-e-05', option_type: 'emotion', label: '嬉しい',    sort_order: 4 },
-  { id: 'opt-e-06', option_type: 'emotion', label: '達成感',    sort_order: 5 },
-  { id: 'opt-e-07', option_type: 'emotion', label: '焦り',      sort_order: 6 },
-  { id: 'opt-e-08', option_type: 'emotion', label: 'つらい',    sort_order: 7 },
-  { id: 'opt-e-09', option_type: 'emotion', label: 'やる気',    sort_order: 8 },
-  { id: 'opt-e-10', option_type: 'emotion', label: 'リラックス', sort_order: 9 },
   // retro_type
   { id: 'opt-t-01', option_type: 'retro_type', label: 'Keep',    sort_order: 0 },
   { id: 'opt-t-02', option_type: 'retro_type', label: 'Problem', sort_order: 1 },
