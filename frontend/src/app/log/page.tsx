@@ -137,7 +137,7 @@ export default function LogPage() {
                           <th className="font-mono text-[9px] uppercase tracking-wider text-ink-light text-left px-2 py-1.5 w-[90px]">Start</th>
                           <th className="font-mono text-[9px] uppercase tracking-wider text-ink-light text-left px-2 py-1.5 w-[90px]">End</th>
                           <th className="font-mono text-[9px] uppercase tracking-wider text-ink-light text-left px-2 py-1.5">Action</th>
-                          <th className="font-mono text-[9px] uppercase tracking-wider text-ink-light text-left px-2 py-1.5 w-[110px]">Emotion</th>
+                          <th className="font-mono text-[9px] uppercase tracking-wider text-ink-light text-left px-2 py-1.5">Emotion</th>
                           <th className="w-[40px]" />
                         </tr>
                       </thead>

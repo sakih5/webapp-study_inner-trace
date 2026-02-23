@@ -151,7 +151,7 @@ export function ExpandableCell({ value, placeholder, onChange, onCommit, autoOpe
       <div
         ref={cellRef}
         onClick={handleOpen}
-        className="w-full h-full cursor-text truncate font-mono text-[12px] px-2 py-1 text-ink"
+        className="w-full cursor-text break-words font-mono text-[12px] px-2 py-1 text-ink min-h-[28px]"
       >
         {localValue || (
           <span className="text-ink-light">{placeholder}</span>

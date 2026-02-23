@@ -71,7 +71,7 @@ export function LogRow({
       </td>
 
       {/* 感情 */}
-      <td className="px-0 py-0 w-[110px]">
+      <td className="px-0 py-0">
         <ExpandableCell
           value={entry.emotion ?? ''}
           placeholder="感情..."
