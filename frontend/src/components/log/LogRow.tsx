@@ -9,27 +9,12 @@ const TIME_OPTIONS = generateTimeOptions();
 interface LogRowProps {
   entry: LogEntry;
   isOdd?: boolean;
-  isProvisional?: boolean;
   onUpdate: (id: string, patch: Partial<LogEntry>) => void;
   onDelete: (id: string) => void;
-  onProvisionalAction?: (action: string) => void;
 }
 
-export function LogRow({
-  entry,
-  isOdd,
-  isProvisional,
-  onUpdate,
-  onDelete,
-  onProvisionalAction,
-}: LogRowProps) {
+export function LogRow({ entry, isOdd, onUpdate, onDelete }: LogRowProps) {
   const rowBg = isOdd ? 'bg-bg' : 'bg-paper';
-
-  const handleActionChange = (value: string) => {
-    if (!isProvisional) {
-      onUpdate(entry.id, { action: value });
-    }
-  };
 
   return (
     <tr className={`${rowBg} hover:bg-paper/60 transition-colors group`}>
@@ -64,9 +49,7 @@ export function LogRow({
         <ExpandableCell
           value={entry.action}
           placeholder="行動を入力..."
-          onChange={handleActionChange}
-          onCommit={isProvisional ? onProvisionalAction : undefined}
-          autoOpen={isProvisional}
+          onChange={v => onUpdate(entry.id, { action: v })}
         />
       </td>
 

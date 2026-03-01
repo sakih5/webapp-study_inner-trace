@@ -1,18 +1,17 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, Fragment } from 'react';
 import useSWR from 'swr';
 import { useRetro } from '@/hooks/useRetro';
 import { TableSkeleton } from '@/components/shared/TableSkeleton';
 import { WeekGroup } from '@/components/shared/WeekGroup';
 import { RetroRow } from '@/components/retro/RetroRow';
+import { AddRetroModal } from '@/components/retro/AddRetroModal';
 import { groupByWeek, groupByDate, formatDateLabel, today } from '@/lib/dateUtils';
 import { sortRetroEntries } from '@/lib/logUtils';
 import { buildRetroText } from '@/lib/export';
 import { fetcher } from '@/lib/api';
 import type { RetroEntry, UserOption } from '@/lib/types';
-
-type ProvisionalEntry = Omit<RetroEntry, 'id' | 'content'>;
 
 export default function RetroPage() {
   const { entries, isLoading, error, isLoadingMore, hasMore, loadMore, add, update, remove, retry } =
@@ -26,7 +25,7 @@ export default function RetroPage() {
     fetcher,
   );
 
-  const [provisional, setProvisional] = useState<ProvisionalEntry | null>(null);
+  const [modal, setModal] = useState<{ initialDate: string } | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   // 無限スクロール
@@ -40,37 +39,15 @@ export default function RetroPage() {
     return () => observer.disconnect();
   }, [isLoadingMore, hasMore, loadMore]);
 
-  const defaultType = typeOptions[0]?.label ?? '';
-  const defaultCategory = categoryOptions[0]?.label ?? '';
+  const openModal = (date: string) => setModal({ initialDate: date });
+  const closeModal = () => setModal(null);
 
-  const handleAddRow = () => {
-    if (provisional) return;
-    setProvisional({ date: today(), type: defaultType, category: defaultCategory });
+  const handleModalSave = async (entry: Omit<RetroEntry, 'id' | 'created_at' | 'updated_at'>) => {
+    await add(entry);
+    closeModal();
   };
 
-  const handleProvisionalUpdate = (patch: Partial<RetroEntry>) => {
-    setProvisional(prev => (prev ? { ...prev, ...patch } : prev));
-  };
-
-  const handleProvisionalContent = async (content: string) => {
-    if (!provisional) return;
-    if (!content.trim()) { setProvisional(null); return; }
-    await add({
-      date: provisional.date,
-      type: provisional.type || defaultType,
-      category: provisional.category || defaultCategory,
-      content: content.trim(),
-    });
-    setProvisional(null);
-  };
-
-  // 仮行を通常エントリと同じ形で混ぜてグルーピング
-  const provisionalAsEntry: RetroEntry | null = provisional
-    ? { id: '__provisional__', content: '', ...provisional }
-    : null;
-  const allEntries = provisionalAsEntry ? [provisionalAsEntry, ...entries] : entries;
-
-  const sorted = sortRetroEntries(allEntries);
+  const sorted = sortRetroEntries(entries);
   const grouped = groupByWeek(sorted);
   const weekKeys = [...grouped.keys()];
   const latestWeekKey = weekKeys[0];
@@ -106,14 +83,12 @@ export default function RetroPage() {
       {/* ページヘッダー */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-[16px] font-semibold text-ink">振り返り</h1>
-        {!provisional && (
-          <button
-            onClick={handleAddRow}
-            className="font-mono text-[11px] px-3 py-1.5 bg-ink text-bg rounded hover:opacity-80 transition-opacity"
-          >
-            ＋ 振り返りを追加
-          </button>
-        )}
+        <button
+          onClick={() => openModal(today())}
+          className="font-mono text-[11px] px-3 py-1.5 bg-ink text-bg rounded hover:opacity-80 transition-opacity"
+        >
+          ＋ 振り返りを追加
+        </button>
       </div>
 
       {grouped.size === 0 && (
@@ -122,7 +97,6 @@ export default function RetroPage() {
 
       {/* 週グループ */}
       {[...grouped.entries()].map(([weekKey, { week, entries: weekEntries }]) => {
-        const realEntries = weekEntries.filter(e => e.id !== '__provisional__');
         const byDate = groupByDate(sortRetroEntries(weekEntries));
 
         return (
@@ -130,7 +104,7 @@ export default function RetroPage() {
             key={weekKey}
             week={week}
             defaultOpen={weekKey === latestWeekKey}
-            onCopy={() => buildRetroText(realEntries, week.label)}
+            onCopy={() => buildRetroText(weekEntries, week.label)}
           >
             {Object.entries(byDate)
               .sort(([a], [b]) => b.localeCompare(a))
@@ -144,44 +118,33 @@ export default function RetroPage() {
                   {/* テーブル（モバイルは横スクロール） */}
                   <div className="overflow-x-auto mx-2">
                     <div className="rounded-lg overflow-hidden border border-border min-w-[360px]">
-                    <table className="w-full table-fixed text-[12px]">
-                      <thead>
-                        <tr className="bg-paper border-b border-border">
-                          <th className="font-mono text-[9px] uppercase tracking-wider text-ink-light text-left px-2 py-1.5 w-[110px]">Type</th>
-                          <th className="font-mono text-[9px] uppercase tracking-wider text-ink-light text-left px-2 py-1.5 w-[90px]">Category</th>
-                          <th className="font-mono text-[9px] uppercase tracking-wider text-ink-light text-left px-2 py-1.5">Content</th>
-                          <th className="w-[40px]" />
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {dateEntries.map((entry, idx) => (
-                          <RetroRow
-                            key={entry.id}
-                            entry={entry}
-                            typeOptions={typeOptions}
-                            categoryOptions={categoryOptions}
-                            isOdd={idx % 2 === 0}
-                            isProvisional={entry.id === '__provisional__'}
-                            onUpdate={(id, patch) =>
-                              id === '__provisional__'
-                                ? handleProvisionalUpdate(patch)
-                                : update(id, patch)
-                            }
-                            onDelete={(id) =>
-                              id === '__provisional__'
-                                ? setProvisional(null)
-                                : remove(id)
-                            }
-                            onProvisionalContent={
-                              entry.id === '__provisional__'
-                                ? handleProvisionalContent
-                                : undefined
-                            }
-                          />
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      <table className="w-full table-fixed text-[12px]">
+                        <thead>
+                          <tr className="bg-paper border-b border-border">
+                            <th className="font-mono text-[9px] uppercase tracking-wider text-ink-light text-left px-2 py-1.5 w-[110px]">Type</th>
+                            <th className="font-mono text-[9px] uppercase tracking-wider text-ink-light text-left px-2 py-1.5 w-[90px]">Category</th>
+                            <th className="font-mono text-[9px] uppercase tracking-wider text-ink-light text-left px-2 py-1.5">Content</th>
+                            <th className="w-[40px]" />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {dateEntries.map((entry, idx) => (
+                            <Fragment key={entry.id}>
+                              <InsertRow onClick={() => openModal(date)} />
+                              <RetroRow
+                                entry={entry}
+                                typeOptions={typeOptions}
+                                categoryOptions={categoryOptions}
+                                isOdd={idx % 2 === 0}
+                                onUpdate={(id, patch) => update(id, patch)}
+                                onDelete={(id) => remove(id)}
+                              />
+                            </Fragment>
+                          ))}
+                          <InsertRow onClick={() => openModal(date)} />
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -195,6 +158,31 @@ export default function RetroPage() {
           <span className="font-mono text-[11px] text-ink-light">読み込み中...</span>
         )}
       </div>
+
+      {/* 新規追加モーダル */}
+      {modal && (
+        <AddRetroModal
+          initialDate={modal.initialDate}
+          typeOptions={typeOptions}
+          categoryOptions={categoryOptions}
+          onSave={handleModalSave}
+          onClose={closeModal}
+        />
+      )}
     </div>
+  );
+}
+
+function InsertRow({ onClick }: { onClick: () => void }) {
+  return (
+    <tr className="group/insert cursor-pointer" onClick={onClick}>
+      <td colSpan={4} className="px-3 py-0.5">
+        <div className="opacity-0 group-hover/insert:opacity-100 flex items-center gap-1 transition-opacity">
+          <div className="flex-1 h-px bg-accent" />
+          <span className="font-mono text-[9px] text-accent leading-none">＋</span>
+          <div className="flex-1 h-px bg-accent" />
+        </div>
+      </td>
+    </tr>
   );
 }

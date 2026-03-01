@@ -1,21 +1,20 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, Fragment } from 'react';
 import { useLog } from '@/hooks/useLog';
 import { TableSkeleton } from '@/components/shared/TableSkeleton';
 import { WeekGroup } from '@/components/shared/WeekGroup';
 import { LogRow } from '@/components/log/LogRow';
+import { AddEntryModal } from '@/components/log/AddEntryModal';
 import { groupByWeek, groupByDate, formatDateLabel, today } from '@/lib/dateUtils';
 import { sortLogEntries } from '@/lib/logUtils';
 import { buildLogText } from '@/lib/export';
 import type { LogEntry } from '@/lib/types';
 
-type ProvisionalEntry = Omit<LogEntry, 'id' | 'action'>;
-
 export default function LogPage() {
   const { entries, isLoading, error, isLoadingMore, hasMore, loadMore, add, update, remove, retry } =
     useLog();
-  const [provisional, setProvisional] = useState<ProvisionalEntry | null>(null);
+  const [modal, setModal] = useState<{ initialDate: string } | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   // 無限スクロール
@@ -29,35 +28,15 @@ export default function LogPage() {
     return () => observer.disconnect();
   }, [isLoadingMore, hasMore, loadMore]);
 
-  const handleAddRow = () => {
-    if (provisional) return;
-    setProvisional({ date: today(), start_time: null, end_time: null, emotion: null });
+  const openModal = (date: string) => setModal({ initialDate: date });
+  const closeModal = () => setModal(null);
+
+  const handleModalSave = async (entry: Omit<LogEntry, 'id' | 'created_at' | 'updated_at'>) => {
+    await add(entry);
+    closeModal();
   };
 
-  const handleProvisionalUpdate = (patch: Partial<LogEntry>) => {
-    setProvisional(prev => (prev ? { ...prev, ...patch } : prev));
-  };
-
-  const handleProvisionalAction = async (action: string) => {
-    if (!provisional) return;
-    if (!action.trim()) { setProvisional(null); return; }
-    await add({
-      date: provisional.date,
-      start_time: provisional.start_time,
-      end_time: provisional.end_time,
-      action: action.trim(),
-      emotion: provisional.emotion,
-    });
-    setProvisional(null);
-  };
-
-  // 仮行を通常エントリと同じ形で混ぜてグルーピング
-  const provisionalAsEntry: LogEntry | null = provisional
-    ? { id: '__provisional__', action: '', ...provisional }
-    : null;
-  const allEntries = provisionalAsEntry ? [provisionalAsEntry, ...entries] : entries;
-
-  const sorted = sortLogEntries(allEntries);
+  const sorted = sortLogEntries(entries);
   const grouped = groupByWeek(sorted);
   const weekKeys = [...grouped.keys()];
   const latestWeekKey = weekKeys[0];
@@ -93,14 +72,12 @@ export default function LogPage() {
       {/* ページヘッダー */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-[16px] font-semibold text-ink">行動・感情記録</h1>
-        {!provisional && (
-          <button
-            onClick={handleAddRow}
-            className="font-mono text-[11px] px-3 py-1.5 bg-ink text-bg rounded hover:opacity-80 transition-opacity"
-          >
-            ＋ 記録を追加
-          </button>
-        )}
+        <button
+          onClick={() => openModal(today())}
+          className="font-mono text-[11px] px-3 py-1.5 bg-ink text-bg rounded hover:opacity-80 transition-opacity"
+        >
+          ＋ 記録を追加
+        </button>
       </div>
 
       {grouped.size === 0 && (
@@ -109,7 +86,6 @@ export default function LogPage() {
 
       {/* 週グループ */}
       {[...grouped.entries()].map(([weekKey, { week, entries: weekEntries }]) => {
-        const realEntries = weekEntries.filter(e => e.id !== '__provisional__');
         const byDate = groupByDate(sortLogEntries(weekEntries));
 
         return (
@@ -117,7 +93,7 @@ export default function LogPage() {
             key={weekKey}
             week={week}
             defaultOpen={weekKey === latestWeekKey}
-            onCopy={() => buildLogText(realEntries, week.label)}
+            onCopy={() => buildLogText(weekEntries, week.label)}
           >
             {Object.entries(byDate)
               .sort(([a], [b]) => b.localeCompare(a))
@@ -131,43 +107,32 @@ export default function LogPage() {
                   {/* テーブル（モバイルは横スクロール） */}
                   <div className="overflow-x-auto mx-2">
                     <div className="rounded-lg overflow-hidden border border-border min-w-[480px]">
-                    <table className="w-full table-fixed text-[12px]">
-                      <thead>
-                        <tr className="bg-paper border-b border-border">
-                          <th className="font-mono text-[9px] uppercase tracking-wider text-ink-light text-left px-2 py-1.5 w-[90px]">Start</th>
-                          <th className="font-mono text-[9px] uppercase tracking-wider text-ink-light text-left px-2 py-1.5 w-[90px]">End</th>
-                          <th className="font-mono text-[9px] uppercase tracking-wider text-ink-light text-left px-2 py-1.5">Action</th>
-                          <th className="font-mono text-[9px] uppercase tracking-wider text-ink-light text-left px-2 py-1.5">Emotion</th>
-                          <th className="w-[40px]" />
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {dateEntries.map((entry, idx) => (
-                          <LogRow
-                            key={entry.id}
-                            entry={entry}
-                            isOdd={idx % 2 === 0}
-                            isProvisional={entry.id === '__provisional__'}
-                            onUpdate={(id, patch) =>
-                              id === '__provisional__'
-                                ? handleProvisionalUpdate(patch)
-                                : update(id, patch)
-                            }
-                            onDelete={(id) =>
-                              id === '__provisional__'
-                                ? setProvisional(null)
-                                : remove(id)
-                            }
-                            onProvisionalAction={
-                              entry.id === '__provisional__'
-                                ? handleProvisionalAction
-                                : undefined
-                            }
-                          />
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      <table className="w-full table-fixed text-[12px]">
+                        <thead>
+                          <tr className="bg-paper border-b border-border">
+                            <th className="font-mono text-[9px] uppercase tracking-wider text-ink-light text-left px-2 py-1.5 w-[90px]">Start</th>
+                            <th className="font-mono text-[9px] uppercase tracking-wider text-ink-light text-left px-2 py-1.5 w-[90px]">End</th>
+                            <th className="font-mono text-[9px] uppercase tracking-wider text-ink-light text-left px-2 py-1.5">Action</th>
+                            <th className="font-mono text-[9px] uppercase tracking-wider text-ink-light text-left px-2 py-1.5">Emotion</th>
+                            <th className="w-[40px]" />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {dateEntries.map((entry, idx) => (
+                            <Fragment key={entry.id}>
+                              <InsertRow onClick={() => openModal(date)} />
+                              <LogRow
+                                entry={entry}
+                                isOdd={idx % 2 === 0}
+                                onUpdate={(id, patch) => update(id, patch)}
+                                onDelete={(id) => remove(id)}
+                              />
+                            </Fragment>
+                          ))}
+                          <InsertRow onClick={() => openModal(date)} />
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -181,6 +146,29 @@ export default function LogPage() {
           <span className="font-mono text-[11px] text-ink-light">読み込み中...</span>
         )}
       </div>
+
+      {/* 新規追加モーダル */}
+      {modal && (
+        <AddEntryModal
+          initialDate={modal.initialDate}
+          onSave={handleModalSave}
+          onClose={closeModal}
+        />
+      )}
     </div>
+  );
+}
+
+function InsertRow({ onClick }: { onClick: () => void }) {
+  return (
+    <tr className="group/insert cursor-pointer" onClick={onClick}>
+      <td colSpan={5} className="px-3 py-0.5">
+        <div className="opacity-0 group-hover/insert:opacity-100 flex items-center gap-1 transition-opacity">
+          <div className="flex-1 h-px bg-accent" />
+          <span className="font-mono text-[9px] text-accent leading-none">＋</span>
+          <div className="flex-1 h-px bg-accent" />
+        </div>
+      </td>
+    </tr>
   );
 }

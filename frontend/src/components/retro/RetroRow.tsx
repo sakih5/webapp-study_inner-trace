@@ -8,10 +8,8 @@ interface RetroRowProps {
   typeOptions: UserOption[];
   categoryOptions: UserOption[];
   isOdd?: boolean;
-  isProvisional?: boolean;
   onUpdate: (id: string, patch: Partial<RetroEntry>) => void;
   onDelete: (id: string) => void;
-  onProvisionalContent?: (content: string) => void;
 }
 
 export function RetroRow({
@@ -19,10 +17,8 @@ export function RetroRow({
   typeOptions,
   categoryOptions,
   isOdd,
-  isProvisional,
   onUpdate,
   onDelete,
-  onProvisionalContent,
 }: RetroRowProps) {
   const rowBg = isOdd ? 'bg-bg' : 'bg-paper';
 
@@ -30,14 +26,6 @@ export function RetroRow({
   const categoryLabels = categoryOptions.map(o => o.label);
   const isOrphanedType = entry.type !== '' && !typeLabels.includes(entry.type);
   const isOrphanedCategory = entry.category !== '' && !categoryLabels.includes(entry.category);
-
-  const handleContentChange = (value: string) => {
-    if (isProvisional) {
-      onProvisionalContent?.(value);
-    } else {
-      onUpdate(entry.id, { content: value });
-    }
-  };
 
   return (
     <tr className={`${rowBg} hover:bg-paper/60 transition-colors group`}>
@@ -82,8 +70,7 @@ export function RetroRow({
         <ExpandableCell
           value={entry.content}
           placeholder="振り返り内容を入力..."
-          onChange={handleContentChange}
-          autoOpen={isProvisional}
+          onChange={v => onUpdate(entry.id, { content: v })}
         />
       </td>
 
