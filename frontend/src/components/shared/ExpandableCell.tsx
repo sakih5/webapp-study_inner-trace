@@ -125,6 +125,13 @@ export function ExpandableCell({ value, placeholder, onChange, onCommit, autoOpe
     if (!onCommit) debouncedSave(e.currentTarget.value);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && e.ctrlKey) {
+      e.preventDefault();
+      handleSaveButton();
+    }
+  };
+
   const handleBlur = (e: React.FocusEvent<HTMLTextAreaElement>) => {
     debouncedSave.cancel();
     if (onCommit) {
@@ -176,6 +183,7 @@ export function ExpandableCell({ value, placeholder, onChange, onCommit, autoOpe
             onChange={handleChange}
             onCompositionStart={handleCompositionStart}
             onCompositionEnd={handleCompositionEnd}
+            onKeyDown={handleKeyDown}
             onBlur={handleBlur}
             placeholder={placeholder}
             maxLength={5000}
